@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SeulBall Arena Online - Sunucu Listesi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700;800&family=Outfit:wght@800;900&family=Teko:wght@700&display=swap" rel="stylesheet">
+
+    <script src="firebase-config.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
+
+    <style>
+        body {
+            font-family: 'Fredoka', cursive, sans-serif;
+            background: #020407;
+            color: #ffffff;
+            user-select: none;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #game-bg {
+            position: absolute;
+            inset: 0;
+            background-image: url('background.jpg');
+            background-size: cover;
+            background-position: center;
+            filter: blur(4px) brightness(0.4) contrast(1.1);
+            transform: scale(1.05);
+            z-index: 0;
+        }
+
+        #particles-canvas {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .unity-viewport {
+            perspective: 1200px;
+        }
+
+        .unity-card-frame {
+            transform-style: preserve-3d;
+            box-shadow: 0 30px 100px rgba(0,0,0,0.95), inset 0 0 2px rgba(255,255,255,0.2);
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            background: rgba(8, 14, 26, 0.85);
+            backdrop-filter: blur(16px);
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-150%) skewX(-20deg); }
+            50%, 100% { transform: translateX(150%) skewX(-20deg); }
+        }
+        .shimmer-effect { position: relative; overflow: hidden; }
+        .shimmer-effect::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 60%; height: 100%;
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+            animation: shimmer 3.8s infinite; pointer-events: none;
+        }
+
+        .btn-top-glass {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
+            border: 1.5px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transition: all 0.15s ease;
+        }
+        .btn-top-glass:hover {
+            border-color: rgba(255, 215, 0, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .btn-join {
+            background: linear-gradient(180deg, #3b82f6 0%, #2563eb 60%, #1d4ed8 100%);
+            border: 2px solid #bfdbfe;
+            box-shadow: 0 4px 0 #1e3a8a, 0 8px 15px rgba(59, 130, 246, 0.4);
+            transition: all 0.12s ease;
+        }
+        .btn-join:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 #1e3a8a, 0 10px 20px rgba(59, 130, 246, 0.6);
+            filter: brightness(1.1);
+        }
+        .btn-join:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #1e3a8a !important;
+        }
+
+        .room-card {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.7) 0%, rgba(30, 41, 59, 0.5) 100%);
+            border: 1.5px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s ease;
+        }
+        .room-card:hover {
+            border-color: rgba(245, 158, 11, 0.5);
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.8) 100%);
+            transform: scale(1.008);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        .flag-icon {
+            width: 28px;
+            height: 20px;
+            border-radius: 4px;
+            object-fit: cover;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+        }
+
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.5); border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(245, 158, 11, 0.8); }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4 unity-viewport">
+
+    <div id="app-container" class="unity-card-frame relative w-[1020px] h-[650px] rounded-[40px] overflow-hidden flex flex-col justify-between z-10 p-6">
+        
+        <div id="game-bg"></div>
+        <canvas id="particles-canvas"></canvas>
+
+        <!-- HEADER -->
+        <header class="relative z-10 flex justify-between items-center pb-3 border-b border-white/10">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-emerald-500/20 border-2 border-emerald-400 rounded-2xl flex items-center justify-center text-emerald-400 text-lg">
+                    <i class="fa-solid fa-server"></i>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-amber-200 to-amber-500 uppercase tracking-wide" style="font-family: 'Teko', sans-serif;">
+                        SUNUCU LİSTESİ
+                    </h1>
+                    <p class="text-[11px] font-bold text-slate-400 -mt-2 uppercase tracking-widest">Dünya genelinden odalara katıl veya maç izle</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <!-- Pasif Oda Oluştur Butonu -->
+                <button onclick="playUiSound(); showToast('Oda oluşturma şu an bakımda!')" class="btn-top-glass opacity-60 cursor-not-allowed px-5 py-2.5 rounded-2xl flex items-center gap-2 text-emerald-400 font-extrabold text-xs tracking-wider">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>ODA OLUŞTUR</span>
+                </button>
+
+                <!-- Geri Dön Butonu -->
+                <button onclick="playUiSound(); window.location.href='index.html'" class="btn-top-glass px-5 py-2.5 rounded-2xl flex items-center gap-2 text-slate-300 hover:text-white font-extrabold text-xs tracking-wider">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>GERİ DÖN</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- ARAMA BAR -->
+        <div class="relative z-10 my-2 flex items-center gap-3">
+            <div class="relative flex-1">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                <input type="text" id="search-input" onkeyup="filterRooms()" placeholder="Oda adı, kurucu veya ülke ara..." class="w-full bg-slate-950/80 border-2 border-slate-800/80 rounded-2xl py-2 pl-11 pr-4 text-xs font-bold text-amber-300 placeholder-slate-500 focus:outline-none focus:border-amber-400/60 transition-all">
+            </div>
+        </div>
+
+        <!-- ODA LİSTESİ -->
+        <div class="relative z-10 flex-1 overflow-y-auto custom-scroll pr-1 my-1 space-y-2" id="room-container">
+            <!-- JavaScript dinamik dolduracak -->
+        </div>
+
+        <!-- FOOTER / STATS -->
+        <footer class="relative z-10 pt-2 border-t border-white/10 flex justify-between items-center text-xs font-bold text-slate-400">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>SUNUCU DURUMU: <strong class="text-emerald-400">STABİL</strong></span>
+            </div>
+            <div>
+                <span>TOPLAM ODA: <strong id="total-rooms-count" class="text-amber-400">0 ODA</strong></span>
+            </div>
+        </footer>
+
+        <div id="toast-msg" class="absolute top-6 left-1/2 -translate-x-1/2 bg-slate-900 border-2 border-amber-400 text-amber-300 font-bold px-6 py-2 rounded-full text-xs shadow-2xl opacity-0 pointer-events-none transition-all duration-300 z-50">Bildirim</div>
+    </div>
+
+    <script>
+        // ÜLKELERİNE GÖRE SIRALANMIŞ / GRUPLANMIŞ ÇOK SAYIDA ODA VERİSİ
+        const roomsData = [
+            // --- GERÇEK ODA (Firebase'e bağlı, tek canlı oda) — diğer tüm odalar görsel amaçlıdır ---
+            { id: 0, real: true, name: "🇹🇷 SeulBall Deney Odası [CANLI]", host: "Sistem", mode: "Otomatik 1v1 / 2v2 / 3v3", players: 0, maxPlayers: 6, ping: null, countryCode: "tr" },
+
+            // --- TÜRKİYE (TR) ---
+            { id: 1, name: "🇹🇷 Türkiye Official #1 [KLASİK 3v3]", host: "AhmetPro34", mode: "3v3 Klasik", players: 5, maxPlayers: 6, ping: 14, countryCode: "tr" },
+            { id: 2, name: "🇹🇷 Klan Antrenmanı [ŞİFRESİZ]", host: "Mehmet_TR", mode: "4v4 Takım", players: 7, maxPlayers: 8, ping: 18, countryCode: "tr" },
+            { id: 3, name: "🇹🇷 Gece Tayfası Serbest Saha", host: "NightRider", mode: "Serbest Mod", players: 9, maxPlayers: 10, ping: 12, countryCode: "tr" },
+            { id: 4, name: "🇹🇷 1v1 Kral Muhafızı Düello", host: "Gunduzu_Slayer", mode: "1v1 Düello", players: 1, maxPlayers: 2, ping: 15, countryCode: "tr" },
+            { id: 5, name: "🇹🇷 Amatörler Girebilir Eğlence", host: "Ege_35", mode: "3v3 Klasik", players: 2, maxPlayers: 6, ping: 22, countryCode: "tr" },
+            { id: 6, name: "🇹🇷 Süper Lig Simülasyonu", host: "Cimbom_1905", mode: "4v4 Lig", players: 6, maxPlayers: 8, ping: 16, countryCode: "tr" },
+            { id: 7, name: "🇹🇷 Kadıköy Boğaları 3v3 Fast", host: "Fenerli_1907", mode: "3v3 Hızlı", players: 4, maxPlayers: 6, ping: 19, countryCode: "tr" },
+            { id: 8, name: "🇹🇷 Kara Kartallar 2v2 Arena", host: "Besiktas_1903", mode: "2v2 Arena", players: 3, maxPlayers: 4, ping: 17, countryCode: "tr" },
+            { id: 9, name: "🇹🇷 Karadeniz Fırtınası Pro", host: "TS_61", mode: "4v4 Takım", players: 8, maxPlayers: 8, ping: 25, countryCode: "tr" },
+
+            // --- ALMANYA (DE) ---
+            { id: 10, name: "🇩🇪 Germany High Skill 2v2 Fast", host: "Klaus_Ball", mode: "2v2 Hızlı", players: 3, maxPlayers: 4, ping: 38, countryCode: "de" },
+            { id: 11, name: "🇩🇪 Berlin Arena Official 4v4", host: "Hans_Muller", mode: "4v4 Takım", players: 6, maxPlayers: 8, ping: 35, countryCode: "de" },
+            { id: 12, name: "🇩🇪 Bavaria Power Shots Only", host: "Stefan_FCB", mode: "3v3 Power", players: 5, maxPlayers: 6, ping: 40, countryCode: "de" },
+            { id: 13, name: "🇩🇪 Ruhrpott Futsal League 3v3", host: "Marco_BVB", mode: "3v3 Futsal", players: 2, maxPlayers: 6, ping: 36, countryCode: "de" },
+
+            // --- İNGİLTERE (GB) ---
+            { id: 14, name: "🇬🇧 UK Pro League - Space Bounce", host: "Oliver_99", mode: "3v3 Lig", players: 6, maxPlayers: 6, ping: 42, countryCode: "gb" },
+            { id: 15, name: "🇬🇧 London Derby 4v4 Futsal", host: "Harry_K", mode: "4v4 Salon", players: 7, maxPlayers: 8, ping: 45, countryCode: "gb" },
+            { id: 16, name: "🇬🇧 Manchester Fast Trickshots 2v2", host: "Dexter_UK", mode: "2v2 Teknik", players: 1, maxPlayers: 4, ping: 44, countryCode: "gb" },
+
+            // --- FRANSA (FR) ---
+            { id: 17, name: "🇫🇷 France Futsal Arena 4v4", host: "Pierre_FC", mode: "4v4 Salon", players: 4, maxPlayers: 8, ping: 48, countryCode: "fr" },
+            { id: 18, name: "🇫🇷 Paris Saint Arena 3v3 Tricksters", host: "Kylian_K", mode: "3v3 Teknik", players: 5, maxPlayers: 6, ping: 46, countryCode: "fr" },
+            { id: 19, name: "🇫🇷 Marseille Beach Ball Fast", host: "Lumiere_13", mode: "2v2 Hızlı", players: 2, maxPlayers: 4, ping: 50, countryCode: "fr" },
+
+            // --- İSPANYA (ES) ---
+            { id: 20, name: "🇪🇸 Spain Tikitaka Masters", host: "El_Matador", mode: "3v3 Pas", players: 5, maxPlayers: 6, ping: 55, countryCode: "es" },
+            { id: 21, name: "🇪🇸 Madrid El Clasico 4v4", host: "Carlos_R", mode: "4v4 Takım", players: 8, maxPlayers: 8, ping: 58, countryCode: "es" },
+            { id: 22, name: "🇪🇸 Barcelona Passing Drill 2v2", host: "Pedri_8", mode: "2v2 Pas", players: 3, maxPlayers: 4, ping: 52, countryCode: "es" },
+
+            // --- İTALYA (IT) ---
+            { id: 23, name: "🇮🇹 Italy Catenaccio Defense", host: "Marco_G", mode: "3v3 Savunma", players: 4, maxPlayers: 6, ping: 45, countryCode: "it" },
+            { id: 24, name: "🇮🇹 Milano Derby Fast Shots", host: "Luigi_Inter", mode: "4v4 Hızlı", players: 6, maxPlayers: 8, ping: 48, countryCode: "it" },
+
+            // --- HOLLANDA (NL) ---
+            { id: 25, name: "🇳🇱 Netherlands Total Football", host: "Van_Persie", mode: "4v4 Total", players: 8, maxPlayers: 8, ping: 35, countryCode: "nl" },
+            { id: 26, name: "🇳🇱 Amsterdam Arena 3v3 Fast", host: "De_Jong", mode: "3v3 Hızlı", players: 3, maxPlayers: 6, ping: 37, countryCode: "nl" },
+
+            // --- PORTEKİZ (PT) ---
+            { id: 27, name: "🇵🇹 Portugal Skillzz & Tricks", host: "Ronaldo_7", mode: "2v2 Teknik", players: 3, maxPlayers: 4, ping: 62, countryCode: "pt" },
+
+            // --- AMERİKA BİRLEŞİK DEVLETLERİ (US) ---
+            { id: 28, name: "🇺🇸 US East - Real Power Shots", host: "JohnSlayer", mode: "3v3 Power", players: 2, maxPlayers: 6, ping: 110, countryCode: "us" },
+            { id: 29, name: "🇺🇸 US West Fast Ball 2v2", host: "Alex_LA", mode: "2v2 Hızlı", players: 1, maxPlayers: 4, ping: 135, countryCode: "us" },
+            { id: 30, name: "🇺🇸 NYC Street Soccer 4v4", host: "Brooklyn_Pro", mode: "4v4 Sokak", players: 7, maxPlayers: 8, ping: 118, countryCode: "us" },
+
+            // --- BREZİLYA (BR) ---
+            { id: 31, name: "🇧🇷 Brazil Joga Bonito 3v3", host: "Neymar_JR", mode: "3v3 Fantezi", players: 5, maxPlayers: 6, ping: 160, countryCode: "br" },
+            { id: 32, name: "🇧🇷 Rio Futsal Beach 2v2", host: "Pelinho_10", mode: "2v2 Plaj", players: 4, maxPlayers: 4, ping: 165, countryCode: "br" },
+
+            // --- ARJANTİN (AR) ---
+            { id: 33, name: "🇦🇷 Argentina Tango Masters", host: "Leo_10", mode: "3v3 Teknik", players: 6, maxPlayers: 6, ping: 175, countryCode: "ar" }
+        ];
+
+        function renderRooms() {
+            const container = document.getElementById('room-container');
+            container.innerHTML = '';
+
+            document.getElementById('total-rooms-count').innerText = `${roomsData.length} ODA`;
+
+            roomsData.forEach(room => {
+                const isFull = !room.real && room.players >= room.maxPlayers;
+                const pingColor = (room.ping || 0) < 30 ? 'text-emerald-400' : ((room.ping || 0) < 70 ? 'text-yellow-400' : 'text-rose-400');
+                const flagUrl = `https://flagcdn.com/w40/${room.countryCode}.png`;
+
+                const roomEl = document.createElement('div');
+                roomEl.className = 'room-card rounded-2xl p-3 flex items-center justify-between' + (room.real ? ' ring-2 ring-emerald-400/60' : '');
+                roomEl.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <img src="${flagUrl}" class="flag-icon" alt="${room.countryCode}">
+                        <div>
+                            <h3 class="font-extrabold text-sm text-white tracking-wide flex items-center gap-2">
+                                ${room.name}
+                                ${room.real ? '<span class="text-[9px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/50 rounded px-1.5 py-0.5 tracking-wider">GERÇEK ODA</span>' : ''}
+                            </h3>
+                            <div class="flex items-center gap-2.5 text-[11px] font-semibold text-slate-400 mt-0.5">
+                                <span>Kurucu: <strong class="text-amber-400">${room.host}</strong></span>
+                                <span>•</span>
+                                <span>Mod: ${room.mode}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-5">
+                        <div class="text-right">
+                            <div class="font-black text-xs ${isFull ? 'text-rose-400' : 'text-amber-300'}">${room.real ? room.players + ' çevrimiçi' : room.players + ' / ' + room.maxPlayers}</div>
+                            <div class="text-[10px] font-extrabold ${room.real ? 'text-emerald-400' : pingColor}">${room.real ? 'CANLI' : room.ping + ' ms'} <i class="fa-solid fa-wifi text-[9px] ml-0.5"></i></div>
+                        </div>
+                        <button onclick="playUiSound(); joinGame(${room.real ? 'true' : 'false'})" class="btn-join px-5 py-1.5 rounded-xl font-black text-xs tracking-wider text-white">KATIL</button>
+                    </div>
+                `;
+                container.appendChild(roomEl);
+            });
+        }
+
+        function filterRooms() {
+            const input = document.getElementById('search-input').value.toLowerCase();
+            const cards = document.querySelectorAll('.room-card');
+            cards.forEach(card => {
+                const text = card.innerText.toLowerCase();
+                card.style.display = text.includes(input) ? 'flex' : 'none';
+            });
+        }
+
+        function joinGame(isReal) {
+            if (!isReal) { showToast('Bu oda şu an erişilemiyor (dolu / bakımda).'); return; }
+            showToast('Odaya bağlanılıyor...');
+            setTimeout(() => { window.location.href = 'game.html'; }, 500);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast-msg');
+            toast.innerText = message;
+            toast.style.opacity = '1';
+            setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+        }
+
+        // --- PARÇACIK CANVAS ---
+        const canvas = document.getElementById('particles-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = document.getElementById('app-container').clientWidth;
+            canvas.height = document.getElementById('app-container').clientHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2.5 + 0.5;
+                this.speedY = -(Math.random() * 0.4 + 0.1);
+                this.opacity = Math.random() * 0.5 + 0.2;
+            }
+            update() {
+                this.y += this.speedY;
+                if (this.y < 0) { this.y = canvas.height; this.x = Math.random() * canvas.width; }
+            }
+            draw() {
+                ctx.fillStyle = `rgba(251, 191, 36, ${this.opacity})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        for (let i = 0; i < 30; i++) particles.push(new Particle());
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // --- SES EFEKTİ ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playUiSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.08);
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.08);
+        }
+
+        // Gerçek odadaki canlı oyuncu sayısı (Firebase). Bağlanamazsa 0 gösterir, sayfa yine çalışır.
+        (function watchRealRoom() {
+            try {
+                firebase.initializeApp(window.SEULBALL_FIREBASE);
+                firebase.auth().signInAnonymously().then(() => {
+                    firebase.database().ref((window.SEULBALL_LOBBY || 'quickmatch') + '/players').on('value', snap => {
+                        roomsData[0].players = snap.numChildren();
+                        renderRooms();
+                        filterRooms();
+                    });
+                }).catch(() => {});
+            } catch (e) {}
+        })();
+
+        // İlk yüklemede odaları render et
+        renderRooms();
+    </script>
+</body>
+</html>

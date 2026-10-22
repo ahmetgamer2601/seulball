@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SeulBall Arena Online - Unity 3D UI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700;800&family=Outfit:wght@800;900&family=Teko:wght@700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Fredoka', cursive, sans-serif;
+            background: #020407;
+            color: #ffffff;
+            user-select: none;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* --- ARKA PLAN VE PARÇACIKLAR --- */
+        #game-bg {
+            position: absolute;
+            inset: 0;
+            background-image: url('background.jpg');
+            background-size: cover;
+            background-position: center;
+            filter: blur(3px) brightness(0.5) contrast(1.1);
+            transform: scale(1.05);
+            z-index: 0;
+        }
+
+        #particles-canvas {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* --- UNITY 3D OYUN CONTAINER --- */
+        .unity-viewport {
+            perspective: 1200px;
+        }
+
+        .unity-card-frame {
+            transform-style: preserve-3d;
+            box-shadow: 0 30px 100px rgba(0,0,0,0.95), inset 0 0 2px rgba(255,255,255,0.2);
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            background: rgba(8, 14, 26, 0.82);
+            backdrop-filter: blur(16px);
+        }
+
+        /* --- KARAKTER NEFES ALMA ANİMASYONU --- */
+        @keyframes characterBreath {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-10px) scale(1.02); }
+        }
+        .animate-breath { animation: characterBreath 3.5s ease-in-out infinite; }
+
+        /* --- 3D PARA BİRİMİ KAPSÜLLERİ --- */
+        .unity-currency-badge {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.8), inset 0 1px 2px rgba(255,255,255,0.4);
+            border-radius: 999px;
+            padding: 4px 14px 4px 6px;
+        }
+
+        .gold-gem-3d {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #fff7ed 0%, #f59e0b 50%, #78350f 100%);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.8), inset 0 -2px 4px rgba(0,0,0,0.6);
+            border: 2px solid #fffbeb; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #451a03;
+        }
+
+        .diamond-gem-3d {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #ecfeff 0%, #06b6d4 50%, #164e63 100%);
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.8), inset 0 -2px 4px rgba(0,0,0,0.6);
+            border: 2px solid #ecfeff; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #083344;
+        }
+
+        /* --- SHIMMER & PARLAMA --- */
+        @keyframes shimmer {
+            0% { transform: translateX(-150%) skewX(-20deg); }
+            50%, 100% { transform: translateX(150%) skewX(-20deg); }
+        }
+        .shimmer-effect { position: relative; overflow: hidden; }
+        .shimmer-effect::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 60%; height: 100%;
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%);
+            animation: shimmer 3.8s infinite; pointer-events: none;
+        }
+
+        /* --- OYUN BUTONLARI --- */
+        .btn-top-glass {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
+            border: 1.5px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-top-glass:hover {
+            border-color: rgba(255, 215, 0, 0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8), 0 0 15px rgba(245, 158, 11, 0.2);
+        }
+
+        .btn-main-play {
+            background: linear-gradient(180deg, #ffe066 0%, #f59e0b 40%, #b45309 100%);
+            border: 3.5px solid #fffbeb;
+            box-shadow: 0 12px 0 #78350f, 0 20px 40px rgba(245, 158, 11, 0.6);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.12s ease;
+        }
+        .btn-main-play:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 0 #78350f, 0 25px 50px rgba(245, 158, 11, 0.8);
+            filter: brightness(1.08);
+        }
+        .btn-main-play:active {
+            transform: translateY(8px) !important;
+            box-shadow: 0 4px 0 #78350f, 0 5px 15px rgba(0,0,0,0.6) !important;
+        }
+
+        .sub-btn {
+            height: 58px; padding: 0 20px; border-radius: 20px;
+            display: flex; align-items: center; gap: 12px;
+            font-weight: 800; font-size: 0.875rem; letter-spacing: 0.5px;
+            cursor: pointer; transition: all 0.15s ease;
+        }
+        .sub-btn:hover { transform: translateY(-3px); }
+        .sub-btn:active { transform: translateY(4px) !important; box-shadow: 0 1px 0 transparent !important; }
+
+        .btn-sub-market { background: linear-gradient(180deg, #10b981 0%, #059669 60%, #046c4e 100%); border: 2.5px solid #a7f3d0; box-shadow: 0 8px 0 #064e3b, 0 12px 25px rgba(16, 185, 129, 0.4); color: #fff; }
+        .btn-sub-leagues { background: linear-gradient(180deg, #facc15 0%, #eab308 60%, #ca8a04 100%); border: 2.5px solid #fef08a; box-shadow: 0 8px 0 #713f12, 0 12px 25px rgba(234, 179, 8, 0.4); color: #422006; }
+        .btn-sub-event { background: linear-gradient(180deg, #3b82f6 0%, #2563eb 60%, #1d4ed8 100%); border: 2.5px solid #bfdbfe; box-shadow: 0 8px 0 #1e3a8a, 0 12px 25px rgba(59, 130, 246, 0.4); color: #fff; }
+        .btn-sub-closet { background: linear-gradient(180deg, #a855f7 0%, #9333ea 60%, #7e22ce 100%); border: 2.5px solid #f3e8ff; box-shadow: 0 8px 0 #581c87, 0 12px 25px rgba(168, 85, 247, 0.4); color: #fff; }
+
+        .loader-glow { box-shadow: 0 0 25px #f59e0b, 0 0 40px #d97706; }
+
+        /* --- 3D OYUN MODU KARTLARI --- */
+        .game-mode-card {
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-style: preserve-3d;
+            perspective: 800px;
+        }
+
+        .game-mode-card:hover {
+            transform: translateY(-10px) scale(1.04) rotateX(4deg);
+        }
+
+        .game-mode-card:active {
+            transform: translateY(2px) scale(0.98);
+        }
+
+        @keyframes modePulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.15); opacity: 0.2; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+        .mode-pulse-bg {
+            animation: modePulse 3s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4 unity-viewport">
+
+    <!-- ANA UNITY OYUN CONTAINER -->
+    <div id="app-container" class="unity-card-frame relative w-[1020px] h-[650px] rounded-[40px] overflow-hidden flex flex-col justify-between z-10">
+        
+        <div id="game-bg"></div>
+        <canvas id="particles-canvas"></canvas>
+
+        <!-- 1. SEULBALL YÜKLEME EKRANI -->
+        <div id="loading-screen" class="absolute inset-0 bg-slate-950/95 backdrop-blur-2xl z-50 flex flex-col items-center justify-between py-12 px-8 transition-opacity duration-700">
+            <div></div>
+
+            <div class="flex flex-col items-center gap-3">
+                <div class="relative">
+                    <div class="w-24 h-24 bg-gradient-to-tr from-amber-500 via-orange-500 to-yellow-300 rounded-3xl rotate-12 flex items-center justify-center border-4 border-white/30 shadow-[0_0_60px_rgba(245,158,11,0.6)]">
+                        <i class="fa-solid fa-futbol text-slate-950 text-5xl -rotate-12"></i>
+                    </div>
+                </div>
+                <h1 class="text-6xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-yellow-300 to-orange-500 uppercase mt-2 drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]" style="font-family: 'Teko', sans-serif;">
+                    SEULBALL
+                </h1>
+                <span class="text-xs font-black text-amber-400/80 tracking-[0.4em] uppercase -mt-4">3D ARENA LEAGUE</span>
+            </div>
+
+            <div class="w-full max-w-lg flex flex-col items-center gap-3.5">
+                <div class="w-full h-4 bg-slate-900 rounded-full p-1 border-2 border-slate-800 overflow-hidden shadow-2xl">
+                    <div id="loading-bar" class="h-full w-0 bg-gradient-to-r from-amber-500 via-orange-400 to-yellow-300 rounded-full loader-glow transition-all duration-200"></div>
+                </div>
+
+                <div class="w-full flex justify-between items-center text-[11px] font-black text-slate-400 tracking-wider">
+                    <span>SUNUCUYA BAĞLANILIYOR...</span>
+                    <span id="loading-percentage" class="text-amber-400 font-black">0%</span>
+                </div>
+
+                <div class="w-full bg-slate-900/90 border border-slate-800/80 rounded-2xl p-4 flex items-center gap-4 shadow-2xl mt-1">
+                    <div class="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 text-base flex-shrink-0">
+                        <i class="fa-solid fa-lightbulb animate-pulse"></i>
+                    </div>
+                    <p id="tip-text" class="text-xs font-semibold text-slate-300 leading-relaxed transition-opacity duration-300">
+                        İpucu yükleniyor...
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. OYUNCU ADI MODALI -->
+        <div id="name-modal" class="absolute inset-0 bg-black/85 backdrop-blur-md z-40 hidden flex-col items-center justify-center gap-6">
+            <div class="bg-slate-900/95 p-8 rounded-3xl w-96 flex flex-col items-center gap-5 border-2 border-slate-700 shadow-2xl">
+                <div class="w-16 h-16 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-400 text-2xl"><i class="fa-solid fa-user-pen"></i></div>
+                <div class="text-center">
+                    <h2 class="text-2xl font-black text-white uppercase tracking-wide">OYUNCU ADI SEÇ</h2>
+                    <p class="text-xs text-slate-400 mt-1 font-semibold">Sahaya çıkmadan önce adını belirle.</p>
+                </div>
+                <input type="text" id="username-input" maxlength="15" placeholder="Oyuncu Adın..." class="w-full bg-slate-950 border-2 border-slate-800 text-amber-400 text-center font-bold text-lg px-4 py-3 rounded-2xl focus:outline-none focus:border-amber-400 transition-colors">
+                <button onclick="saveUsername()" class="btn-main-play w-full text-slate-950 font-black text-xl py-3.5 rounded-2xl"><span>İSMİ ONAYLA</span></button>
+            </div>
+        </div>
+
+        <!-- 3. HEADER BAR -->
+        <header class="relative z-10 px-8 py-5 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <button onclick="playUiSound(); showToast('Facebook ile bağlanılıyor...')" class="btn-top-glass px-4 py-2.5 rounded-2xl flex items-center gap-3 text-blue-400 text-xs font-black tracking-wider">
+                    <div class="w-7 h-7 bg-blue-600/30 rounded-xl flex items-center justify-center text-blue-400 border border-blue-500/30">
+                        <i class="fa-brands fa-facebook-f text-sm"></i>
+                    </div>
+                    <span>BAĞLAN</span>
+                </button>
+
+                <div class="btn-top-glass px-3.5 py-2 rounded-2xl flex items-center gap-2 text-[11px] font-extrabold text-emerald-400">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                    <span>127 AKTİF</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div class="unity-currency-badge flex items-center gap-3">
+                    <div class="gold-gem-3d"><i class="fa-solid fa-coins"></i></div>
+                    <span class="font-black text-sm text-amber-200 tracking-wide">100</span>
+                    <button onclick="playUiSound(); showToast('Altın Mağazası')" class="w-5 h-5 bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 rounded-lg flex items-center justify-center text-[10px] font-bold"><i class="fa-solid fa-plus"></i></button>
+                </div>
+
+                <div class="unity-currency-badge flex items-center gap-3" style="border-color: rgba(6, 182, 212, 0.3);">
+                    <div class="diamond-gem-3d"><i class="fa-solid fa-gem"></i></div>
+                    <span class="font-black text-sm text-cyan-200 tracking-wide">50</span>
+                    <button onclick="playUiSound(); showToast('Elmas Mağazası')" class="w-5 h-5 bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-300 rounded-lg flex items-center justify-center text-[10px] font-bold"><i class="fa-solid fa-plus"></i></button>
+                </div>
+
+                <div class="btn-top-glass px-3.5 py-1.5 rounded-2xl flex items-center gap-2.5">
+                    <img id="user-avatar-mini" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239ca3af'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>" class="w-7 h-7 rounded-xl bg-slate-800 border border-amber-400 object-cover" alt="Avatar">
+                    <span id="header-nickname" class="font-black text-xs text-white tracking-wide">gündüzü</span>
+                </div>
+                
+                <button onclick="playUiSound(); showToast('Ayarlar menüsü')" class="btn-top-glass w-10 h-10 rounded-2xl flex items-center justify-center text-slate-300 hover:text-white text-sm">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- 4. PODYUM / KARAKTER ALANI -->
+        <div class="relative z-10 flex-1 flex flex-col items-center justify-center">
+            <div class="relative flex flex-col items-center animate-breath">
+                <div class="absolute -bottom-6 w-64 h-24 bg-amber-500/20 rounded-full blur-xl pointer-events-none"></div>
+                <div class="relative">
+                    <img id="main-character-img" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239ca3af'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>" class="w-48 h-48 rounded-full bg-slate-900/90 border-4 border-amber-400 shadow-[0_0_60px_rgba(251,191,36,0.5)] object-cover z-10" alt="Karakter">
+                    <div class="absolute -top-1 -left-2 z-30 flex items-center justify-center w-14 h-14 bg-gradient-to-tr from-amber-500 to-yellow-300 rounded-2xl border-2 border-white/80 shadow-lg shimmer-effect rotate-6">
+                        <div class="flex flex-col items-center justify-center text-slate-950 font-black leading-none">
+                            <span class="text-[9px] uppercase tracking-tighter opacity-80">LVL</span>
+                            <span class="text-xl font-black text-slate-950">1</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="w-56 h-5 bg-black/80 rounded-full blur-md mt-2"></div>
+                
+                <div class="mt-2 w-64 bg-slate-900/95 border-2 border-amber-500/60 rounded-2xl p-2.5 shadow-2xl z-20 flex flex-col items-center gap-1.5 backdrop-blur-md">
+                    <span id="podium-nickname" class="font-black text-sm text-amber-300 tracking-wider uppercase">gündüzü</span>
+                    <div class="w-full flex items-center gap-2 px-1">
+                        <div class="flex-1 h-2.5 bg-slate-950 rounded-full p-0.5 border border-slate-700 overflow-hidden">
+                            <div class="h-full w-1/4 bg-gradient-to-r from-amber-500 to-yellow-300 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.8)]"></div>
+                        </div>
+                        <span class="text-[10px] font-black text-slate-400 tracking-tight">25/100 XP</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. FOOTER BAR -->
+        <footer class="relative z-10 px-8 pb-7 flex items-end justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <button onclick="playUiSound(); showToast('Market yakında!')" class="sub-btn btn-sub-market shimmer-effect">
+                    <div class="w-8 h-8 rounded-xl bg-black/20 flex items-center justify-center"><i class="fa-solid fa-store text-emerald-100 text-base"></i></div>
+                    <span>MARKET</span>
+                </button>
+
+                <button onclick="playUiSound(); showToast('Ligler yakında!')" class="sub-btn btn-sub-leagues shimmer-effect">
+                    <div class="w-8 h-8 rounded-xl bg-black/20 flex items-center justify-center"><i class="fa-solid fa-trophy text-amber-950 text-base"></i></div>
+                    <span>LİGLER</span>
+                </button>
+
+                <button onclick="playUiSound(); showToast('Etkinlik bulunmuyor.')" class="sub-btn btn-sub-event shimmer-effect">
+                    <div class="w-8 h-8 rounded-xl bg-black/20 flex items-center justify-center"><i class="fa-solid fa-fire text-blue-100 text-base"></i></div>
+                    <span>ETKİNLİK</span>
+                </button>
+
+                <button onclick="playUiSound(); showToast('Dolap boş.')" class="sub-btn btn-sub-closet shimmer-effect">
+                    <div class="w-8 h-8 rounded-xl bg-black/20 flex items-center justify-center"><i class="fa-solid fa-shirt text-purple-100 text-base"></i></div>
+                    <span>DOLAP</span>
+                </button>
+            </div>
+
+            <button onclick="playUiSound(); openModeSelect()" class="btn-main-play shimmer-effect h-16 px-12 rounded-2xl text-slate-950 font-black text-2xl tracking-widest flex items-center gap-3">
+                <i class="fa-solid fa-play text-xl drop-shadow"></i>
+                <span>OYNA</span>
+            </button>
+        </footer>
+
+        <!-- OYUN MODU SEÇİM MODALI -->
+        <div id="mode-modal" class="absolute inset-0 bg-slate-950/90 backdrop-blur-xl z-30 hidden flex-col items-center justify-center gap-6 p-4">
+            
+            <div class="flex flex-col items-center gap-1">
+                <span class="text-xs font-black tracking-[0.4em] text-amber-400 uppercase">ARENA SAVAŞLARI</span>
+                <h3 class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-amber-200 to-amber-500 tracking-wider uppercase drop-shadow-[0_4px_12px_rgba(245,158,11,0.4)]" style="font-family: 'Teko', sans-serif;">
+                    OYUN MODUNU SEÇ
+                </h3>
+            </div>
+
+            <div class="flex gap-7 max-w-2xl w-full justify-center">
+                
+                <!-- Hızlı Maç Kartı -->
+                <div onclick="playUiSound(); startQuickGame()" class="game-mode-card shimmer-effect flex-1 relative bg-gradient-to-b from-orange-500/90 via-orange-600/80 to-amber-900/90 border-2 border-amber-300/80 rounded-3xl p-6 shadow-[0_15px_35px_rgba(245,158,11,0.35),inset_0_2px_4px_rgba(255,255,255,0.4)] cursor-pointer overflow-hidden group">
+                    <div class="absolute -top-12 -right-12 w-32 h-32 bg-amber-300/20 rounded-full blur-2xl pointer-events-none mode-pulse-bg"></div>
+                    
+                    <div class="flex flex-col items-center gap-4 text-center relative z-10">
+                        <div class="px-3 py-1 bg-black/40 border border-amber-300/40 rounded-full text-[10px] font-black text-amber-200 uppercase tracking-widest">
+                            <i class="fa-solid fa-bolt text-yellow-400 mr-1 animate-pulse"></i> HIZLI EŞLEŞME
+                        </div>
+
+                        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-300 to-orange-500 border-2 border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.4)] flex items-center justify-center text-slate-950 text-4xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                            <i class="fa-solid fa-bolt-lightning drop-shadow"></i>
+                        </div>
+
+                        <div>
+                            <span class="font-black text-2xl text-white tracking-wide uppercase drop-shadow-md block">HIZLI MAÇ</span>
+                            <p class="text-xs font-semibold text-orange-100/90 leading-relaxed mt-1">Saniyeler içinde otomatik odaya katılarak doğrudan sahaya çık.</p>
+                        </div>
+
+                        <div class="w-full pt-2 border-t border-white/10 flex items-center justify-between text-[11px] font-extrabold text-amber-200/90">
+                            <span>BEKLEME SÜRESİ</span>
+                            <span class="text-white font-black">~ 3 SN</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Oda Listesi Kartı (Doğrudan room.html Sayfasına Yönlendirir) -->
+                <div onclick="playUiSound(); goToRoomList()" class="game-mode-card shimmer-effect flex-1 relative bg-gradient-to-b from-emerald-600/90 via-teal-700/80 to-slate-900/90 border-2 border-emerald-300/80 rounded-3xl p-6 shadow-[0_15px_35px_rgba(16,185,129,0.35),inset_0_2px_4px_rgba(255,255,255,0.4)] cursor-pointer overflow-hidden group">
+                    <div class="absolute -top-12 -right-12 w-32 h-32 bg-emerald-400/20 rounded-full blur-2xl pointer-events-none mode-pulse-bg"></div>
+
+                    <div class="flex flex-col items-center gap-4 text-center relative z-10">
+                        <div class="px-3 py-1 bg-black/40 border border-emerald-300/40 rounded-full text-[10px] font-black text-emerald-200 uppercase tracking-widest">
+                            <i class="fa-solid fa-server text-emerald-400 mr-1 animate-pulse"></i> CANLI SUNUCULAR
+                        </div>
+
+                        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-300 to-teal-500 border-2 border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.4)] flex items-center justify-center text-slate-950 text-4xl group-hover:scale-110 group-hover:-rotate-6 transition-all duration-300">
+                            <i class="fa-solid fa-globe drop-shadow"></i>
+                        </div>
+
+                        <div>
+                            <span class="font-black text-2xl text-white tracking-wide uppercase drop-shadow-md block">ODA LİSTESİ</span>
+                            <p class="text-xs font-semibold text-emerald-100/90 leading-relaxed mt-1">Özel lobileri keşfet, odalara katıl veya kendi sunucunu kur.</p>
+                        </div>
+
+                        <div class="w-full pt-2 border-t border-white/10 flex items-center justify-between text-[11px] font-extrabold text-emerald-200/90">
+                            <span>AKTİF ODALAR</span>
+                            <span class="text-white font-black">42 ODA</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <button onclick="playUiSound(); closeModeSelect()" class="mt-2 text-xs font-black text-slate-300 hover:text-white px-8 py-2.5 rounded-2xl bg-slate-900/90 border-2 border-slate-700/80 hover:border-amber-400/60 transition-all shadow-lg tracking-widest uppercase flex items-center gap-2 group">
+                <i class="fa-solid fa-xmark text-slate-400 group-hover:text-amber-400 text-sm"></i>
+                <span>İPTAL</span>
+            </button>
+        </div>
+
+        <div id="toast-msg" class="absolute top-6 left-1/2 -translate-x-1/2 bg-slate-900 border-2 border-amber-400 text-amber-300 font-bold px-6 py-2 rounded-full text-xs shadow-2xl opacity-0 pointer-events-none transition-all duration-300 z-50">Bildirim</div>
+    </div>
+
+    <script>
+        // --- PARÇACIK CANVAS ---
+        const canvas = document.getElementById('particles-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = document.getElementById('app-container').clientWidth;
+            canvas.height = document.getElementById('app-container').clientHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2.5 + 0.5;
+                this.speedY = -(Math.random() * 0.4 + 0.1);
+                this.opacity = Math.random() * 0.5 + 0.2;
+            }
+            update() {
+                this.y += this.speedY;
+                if (this.y < 0) { this.y = canvas.height; this.x = Math.random() * canvas.width; }
+            }
+            draw() {
+                ctx.fillStyle = `rgba(251, 191, 36, ${this.opacity})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        for (let i = 0; i < 40; i++) particles.push(new Particle());
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // --- SES EFEKTİ ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playUiSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.08);
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.08);
+        }
+
+        // --- YÜKLEME EKRANI & İPUÇLARI ---
+        const tips = [
+            "SeulBall projesi ilk olarak 2014 yılında İsviçre'nin Zürih kentinde prototip olarak geliştirilmeye başlandı.",
+            "Topa daha falso ve sert vurmak için şut anında 'M' tuşuna basmayı unutma!",
+            "Karakterini W-A-S-D veya yön tuşları ile hassas bir şekilde yönlendirebilirsin.",
+            "Köşe vuruşlarında takım arkadaşına kavisli pas vermek için SPACE tuşuna basılı tut.",
+            "Günlük lig sıralamasında ilk 3'e girerek ekstra Elmas ödüllerini toplayabilirsin."
+        ];
+
+        let tipIndex = 0;
+        const tipElement = document.getElementById('tip-text');
+
+        function rotateTips() {
+            tipElement.style.opacity = '0';
+            setTimeout(() => {
+                tipElement.innerText = tips[tipIndex];
+                tipElement.style.opacity = '1';
+                tipIndex = (tipIndex + 1) % tips.length;
+            }, 300);
+        }
+        rotateTips();
+        const tipInterval = setInterval(rotateTips, 2800);
+
+        let progress = 0;
+        const loadingBar = document.getElementById('loading-bar');
+        const loadingPercentage = document.getElementById('loading-percentage');
+        const loadingScreen = document.getElementById('loading-screen');
+        const nameModal = document.getElementById('name-modal');
+
+        const loadingInterval = setInterval(() => {
+            progress += Math.floor(Math.random() * 4) + 2;
+            if (progress >= 100) {
+                progress = 100;
+                clearInterval(loadingInterval);
+                clearInterval(tipInterval);
+                loadingBar.style.width = '100%';
+                loadingPercentage.innerText = '100%';
+                
+                setTimeout(() => {
+                    loadingScreen.style.opacity = '0';
+                    setTimeout(() => { 
+                        loadingScreen.style.display = 'none'; 
+                        checkStoredUsername(); 
+                    }, 700);
+                }, 400);
+            } else { 
+                loadingBar.style.width = progress + '%'; 
+                loadingPercentage.innerText = `${progress}%`; 
+            }
+        }, 110);
+
+        // --- KULLANICI ADI YÖNETİMİ ---
+        const defaultAvatar = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239ca3af'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>";
+
+        function checkStoredUsername() {
+            const savedName = localStorage.getItem('seulball_player_name');
+            if (savedName) { updateUIUsername(savedName); } else { nameModal.style.display = 'flex'; }
+        }
+
+        function saveUsername() {
+            playUiSound();
+            const inputVal = document.getElementById('username-input').value.trim();
+            const nickname = inputVal !== "" ? inputVal : "gündüzü";
+            localStorage.setItem('seulball_player_name', nickname);
+            updateUIUsername(nickname);
+            nameModal.style.display = 'none';
+        }
+
+        function updateUIUsername(nickname) {
+            document.getElementById('header-nickname').innerText = nickname;
+            document.getElementById('podium-nickname').innerText = nickname;
+            document.getElementById('user-avatar-mini').src = defaultAvatar;
+            document.getElementById('main-character-img').src = defaultAvatar;
+        }
+
+        // --- SAYFA YÖNLENDİRMELERİ ---
+        function openModeSelect() { document.getElementById('mode-modal').style.display = 'flex'; }
+        function closeModeSelect() { document.getElementById('mode-modal').style.display = 'none'; }
+
+        function startQuickGame() {
+            showToast('Hızlı maç aranıyor...');
+            setTimeout(() => { window.location.href = 'game.html'; }, 800);
+        }
+
+        function goToRoomList() {
+            showToast('Sunucu listesine gidiliyor...');
+            setTimeout(() => { window.location.href = 'room.html'; }, 300);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast-msg');
+            toast.innerText = message;
+            toast.style.opacity = '1';
+            setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+        }
+    </script>
+</body>
+</html>
